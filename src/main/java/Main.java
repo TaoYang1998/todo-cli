@@ -1,5 +1,4 @@
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Objects;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -9,12 +8,27 @@ import picocli.CommandLine.Command;
  */
 @Command(
     name = "todo-cli",
-    description = "A simple todo list CLI backed by an in-memory store",
+    description = "A simple todo list CLI backed by MyBatis/MySQL",
     mixinStandardHelpOptions = true,
-    version = "todo-cli 0.1"
+    version = "todo-cli 0.2"
 )
 public final class Main implements java.util.concurrent.Callable<Integer> {
-    private final List<Task> tasks = new CopyOnWriteArrayList<>();
+    private final TaskRepository repository;
+
+    public Main() {
+        var url = envOrDefault("TODO_DB_URL",
+            "jdbc:mysql://localhost:3306/todo_cli?createDatabaseIfNotExist=true&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true");
+        var user = envOrDefault("TODO_DB_USER", "root");
+        var pass = envOrDefault("TODO_DB_PASS", "");
+        this.repository = new MyBatisTaskRepository(url, user, pass);
+    }
+
+    public TaskRepository repo() { return repository; }
+
+    private static String envOrDefault(String key, String def) {
+        var v = System.getenv(key);
+        return v == null || v.isBlank() ? def : v.trim();
+    }
 
     @Override
     public Integer call() {
@@ -25,8 +39,8 @@ public final class Main implements java.util.concurrent.Callable<Integer> {
     public static void main(String[] args) {
         var main = new Main();
         var commandLine = new CommandLine(main);
-        commandLine.addSubcommand("add", new AddCommand(main.tasks));
-        commandLine.addSubcommand("list", new ListCommand(main.tasks));
+        commandLine.addSubcommand("add", new AddCommand());
+        commandLine.addSubcommand("list", new ListCommand());
         int exitCode = commandLine.execute(args);
         System.exit(exitCode);
     }
