@@ -1,4 +1,4 @@
-# Project: todo-cli
+# Project: todo-service
 Author: taoyang
 JDK Version: 25
 Language: Java
@@ -6,50 +6,82 @@ Language: Java
 ---
 
 ## 🎯 Goal
-实现一个命令行待办事项工具（todo-cli），使用 Picocli 框架，支持添加、列出任务，并为将来扩展 SQLite 和邮件提醒做准备。
+将原有的命令行工具演进为 Spring Boot REST 服务，提供待办事项的创建与查询接口，并保留使用 MyBatis/MySQL 的持久化能力（默认提供 H2 内存数据库便于启动）。
 
 ---
 
-## 🧩 Technical Requirements
+## 🧩 Technical Overview
 
-1. **Language:** Java 25
-2. **CLI Framework:** Picocli
-3. **Build Tool:** Gradle
-4. **Database:** 暂时用内存 List<Task> 存储，后续再换 SQLite。
-5. **Features:**
-    - `add`：添加任务，参数有：
-        - `--title` 任务标题
-        - `--at` 提醒时间（ISO-8601 格式）
-        - `--email` 收件邮箱
-    - `list`：列出所有任务
-6. **Structure:**
-    - `Main.java`：入口类，注册子命令
-    - `AddCommand.java`：实现 add 命令
-    - `ListCommand.java`：实现 list 命令
-    - `Task.java`：定义任务数据结构（使用 record）
-7. **Requirements:**
-    - 所有类应有简短注释
-    - 可通过命令行运行：
-      ```bash
-      java Main add --title "买牛奶" --at "2025-10-28T09:00" --email "me@example.com"
-      java Main list
-      ```
+- **Framework:** Spring Boot 3.3 + Spring MVC
+- **Persistence:** MyBatis（TaskMapper 注解版）
+- **Database:** MySQL（生产）；H2（默认开发/测试，自动加载 `schema.sql`）
+- **Build Tool:** Maven
+- **Java Version:** 25（可兼容 17+）
 
 ---
 
-## 📦 Output
-请生成以下文件：
+## 📡 REST Endpoints
 
-- `src/main/java/Main.java`
-- `src/main/java/AddCommand.java`
-- `src/main/java/ListCommand.java`
-- `src/main/java/Task.java`
-- `pom.xml` （包含依赖 `picocli`）
+| Method | Path         | Description        |
+|--------|--------------|--------------------|
+| POST   | `/api/tasks` | 新建任务，返回 201 |
+| GET    | `/api/tasks` | 列出所有任务       |
+
+### Request JSON (`POST /api/tasks`)
+```json
+{
+  "title": "买牛奶",
+  "remindAt": "2025-10-28T09:00:00", 
+  "email": "me@example.com"
+}
+```
+
+### Response JSON
+```json
+{
+  "id": 1,
+  "title": "买牛奶",
+  "remindAt": "2025-10-28T09:00:00",
+  "email": "me@example.com"
+}
+```
+
+- 若 `remindAt` 早于当前时间，会返回 400。
 
 ---
 
-## 🧠 Notes
-- 确保每个文件都包含 import 语句。
-- 使用 Java 25 的语法（例如 record、var）。
-- 暂不实现数据库，仅使用内存。
-- 每个命令的输出可以用 `System.out.println`。
+## ⚙️ Configuration
+
+| Environment Variable | Default (H2)                                        |
+|----------------------|-----------------------------------------------------|
+| `TODO_DB_URL`        | `jdbc:h2:mem:todo;MODE=MySQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE` |
+| `TODO_DB_USER`       | `sa`                                                                                         |
+| `TODO_DB_PASS`       | ``                                                                                          |
+| `TODO_SERVER_PORT`   | `8080`                                                                                      |
+
+- 生产环境只需提供 MySQL JDBC URL 与凭证。
+- 表结构定义见 `src/main/resources/schema.sql`。
+
+---
+
+## 🚀 Run
+```bash
+mvn spring-boot:run
+```
+或打包后运行：
+```bash
+mvn package
+java -jar target/todo-cli-1.0.0-SNAPSHOT.jar
+```
+
+---
+
+## 🧪 Tests
+- `mvn test`（使用 Spring Boot starter test + H2）
+
+---
+
+## 📝 Notes
+- 处理逻辑集中在 `TaskService`，输入通过 `Task` 领域模型标准化。
+- `RestExceptionHandler` 将 `IllegalArgumentException` 转换成 400 响应。
+- MyBatis Mapper 位于 `com.ty.todo.task.persistence`，支持自动生成主键。
