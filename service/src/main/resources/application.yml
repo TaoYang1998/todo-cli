@@ -1,26 +1,24 @@
 spring:
   application:
     name: todo-service
+  config:
+    import: optional:file:./todo-config.yml
   datasource:
-    url: ${TODO_DB_URL:jdbc:h2:mem:todo;MODE=MySQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
-    username: ${TODO_DB_USER:sa}
-    password: ${TODO_DB_PASS:}
-  sql:
-    init:
-      mode: always
-      encoding: UTF-8
+    url: ${todo.db.url:jdbc:mysql://localhost:3306/todo_cli}
+    username: ${todo.db.user:root}
+    password: ${todo.db.password:password}
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
 server:
-  port: ${TODO_SERVER_PORT:8080}
+  port: ${todo.server.port:8080}
 logging:
   level:
-    com.ty.todo: INFO
+    com.ty.todo: debug
 todo:
   reminder:
-    poll-interval: ${TODO_REMINDER_POLL_INTERVAL:PT30S}
+    poll-interval: ${todo.reminder.poll.interval:PT30S}
     mail:
-      enabled: ${TODO_MAIL_ENABLED:false}
-      from: ${TODO_MAIL_FROM:no-reply@todo.local}
-      subject: ${TODO_MAIL_SUBJECT:Todo Reminder}
+      enabled: ${todo.mail.enabled:false}
+      from: ${todo.mail.from:no-reply@todo.local}
+      subject: ${todo.mail.subject:Todo Reminder}
